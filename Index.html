@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building Map with Events</title>
+    <!-- Include Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <!-- Include Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- Set map height -->
+    <style>
+        body {
+            text-align: center; /* Center align all items within the body */
+            background: linear-gradient(to right, #070920, #121642, #070920);
+            color: white; /* Setting text color */
+            margin: 0;
+            padding: 0;
+        }
+    
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: auto; /* Center the container horizontally */
+            max-width: 800px; /* Example: Set a maximum width for the container */
+        }
+    
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+    
+        .header img {
+            width: 100px;
+        }
+    
+        .header h1 {
+            font-size: 36px;
+            font-weight: bold;
+            text-align: center;
+        }
+    
+        .event-type-buttons {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+    
+        .event-type-buttons button {
+            position: relative;
+            margin: 0 10px;
+        }
+    
+        .event-type-buttons button img {
+            width: 250px;
+            aspect-ratio: 1;
+        }
+    
+        .overlay-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
+            font-size: 12px;
+        }
+    
+        .event-tables {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+    
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            background-color: #363852;
+            color: white;
+            margin: 0 auto; /* Center the table horizontally */
+            padding-left: 20px;
+            font-size: 10px;
+        }
+    
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+    
+        th {
+            background-color: #414A8A;
+        }
+    
+        .map-container {
+            width: 100%;
+            height: auto;
+            margin: 0 auto;
+            padding-top: 20px;
+        }
+    
+        .map {
+            width: 100%;
+            height: 500px; /* Adjust map height as needed */
+            background-color: #363852;
+        }
+    
+        .floor-name {
+            background-color: #363852;
+            padding: 5px;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #d3af37;
+        }
+    </style>
+</head>
+
+<body style="margin: 0;">
+    <!-- Company Logos and Text -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div style="margin-left: 20px;">
+            <img src="Yukti_Logo.png" alt="Left Logo" style="width: 50px;">
+        </div>
+        <img src="Yukti-removebg-preview.png" alt="Left Logo" style="width: 150px;">
+        <div style="margin-right: 20px;">
+            <img src="TSM.png" alt="Right Logo" style="width: 50px;">
+        </div>
+    </div>
+
+    <!-- Choose Event Type buttons with images and text overlay -->
+    <div>
+        <h2>Choose Event Type</h2>
+        <div style="text-align: center;">
+            <button onclick="showEvents('management')" style="position: relative;">
+                <img src="business3.jpg" alt="Management Event Image" style="width: 150px; aspect-ratio: 1;">
+                <span class="overlay-text">Management Events</span>
+            </button>
+            <button onclick="showEvents('cultural')" style="position: relative;">
+                <img src="cultural.jpg" alt="Cultural Event Image" style="width: 150px; aspect-ratio: 1;">
+                <span class="overlay-text">Cultural Events</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Events List -->
+    <div>
+        <head>
+            <style>
+                h2 {
+                    color: black;
+                    font-size: 20px;
+                    text-align: center;
+                    color: #d3af37;
+                }
+            </style>
+        </head>
+    </div>
+
+    <!-- Management Events Table -->
+    <div id="management-table" style="display:none;">
+        <h2>Management Events</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Event Name</th>
+                    <th>Venue</th>
+                    <th>Time</th>
+                    <th>Map</th>
+                </tr>
+            </thead>
+            <tbody id="management-events">
+                <!-- Management events will be populated here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Cultural Events Table -->
+    <div id="cultural-table" style="display:none;">
+        <h2>Cultural Events</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Event Name</th>
+                    <th>Venue</th>
+                    <th>Time</th>
+                    <th>Map</th>
+                </tr>
+            </thead>
+            <tbody id="cultural-events">
+                <!-- Cultural events will be populated here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Maps container -->
+    <div class="map-container">
+        <!-- Map -->
+        <div id="map" class="map">
+            <div class="floor-name" id="floor-name">Floor Map</div>
+        </div>
+    </div>
+
+    <script>
+        // Define image overlays with the floor plans
+        var imageUrls = {
+            Ground_floor: 'ground_floor1.jpg',
+            First_floor: 'first_floor1.jpg'
+        };
+
+        var imageBounds = {
+            Ground_floor: [[9.877301, 78.083108], [9.877858, 78.083707]],
+            First_floor: [[9.877330, 78.082994], [9.878047, 78.083711]]
+        };
+
+        var floorTitles = {
+            Ground_floor: 'Ground Floor',
+            First_floor: 'First Floor'
+        };
+
+        var venue_location = {
+            Ground_floor: {
+                I_PGDM_A: [9.877776, 78.083323],
+                I_PGDM_B: [9.877777, 78.083449],
+                I_PGDM_C: [9.877739, 78.083592],
+                Seminar_hall: [9.877644, 78.083413],
+                MDP: [9.877808, 78.083681],
+            },
+            First_floor: {
+                I_MBA_A: [9.877385, 78.083460],
+                I_MBA_B: [9.877373, 78.083364],
+                II_MBA_A: [9.877462, 78.083581],
+                II_MBA_B: [9.877741, 78.083585],
+                Auditorium: [9.877668, 78.083116],
+                Exam_Hall: [9.877906, 78.083020],
+            }
+        };
+
+        var venues = {
+            Ground_floor: {
+                Emporia: [9.8777556, 78.0833245],
+                Fintorum: [9.8777784, 78.0834553],
+                Datavista: [9.8777305, 78.0835525],
+                Biz_Thrive: [9.8778157, 78.0836722],
+            },
+            First_floor: {
+                Pinnacle: [9.8774078, 78.0835066],
+                The_Last_Knight: [9.8774801, 78.0835790],
+                Optimize: [9.8777242, 78.0835408],
+                Quorum_Quest: [9.8778788, 78.0830634],
+                Lets_Bid: [9.8778788, 78.0830634],
+            }
+        };
+
+        // Initialize events list
+        var eventsList = document.getElementById('events-list');
+
+        // Create map
+        var map = L.map('map').setView([9.877596, 78.083417], 20);
+
+        // Function to show floor map
+        function showFloorMap(floor) {
+            var imageUrl = imageUrls[floor];
+            var imageBound = imageBounds[floor];
+
+            map.eachLayer(function (layer) {
+                if (layer instanceof L.ImageOverlay) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            L.imageOverlay(imageUrl, imageBound).addTo(map);
+
+            // Update the floor name
+            document.getElementById('floor-name').textContent = floorTitles[floor];
+        }
+
+        // Function to show venue on map
+        function showVenue(floor, event, venue) {
+            if (floor == "Stage") {
+                alert('The Venue is the Main Stage');
+            } else {
+                var venueCoords = venue_location[floor][venue];
+                if (venueCoords) {
+                    showFloorMap(floor);
+                    map.eachLayer(function (layer) {
+                        if (layer instanceof L.Marker) {
+                            map.removeLayer(layer);
+                        }
+                    });
+
+                    L.marker(venueCoords).addTo(map).bindPopup('Event Venue: ' + event + ' (Floor ' + floor.charAt(0).toUpperCase() + floor.slice(1) + ')').openPopup();
+                } else {
+                    alert('Venue not found on the selected floor!');
+                }
+            }
+        }
+
+        // Function to show events based on selection
+        function showEvents(eventType) {
+            var mapContainer = document.querySelector('.map-container');
+            var managementTable = document.getElementById('management-table');
+            var culturalTable = document.getElementById('cultural-table');
+
+            document.getElementById('management-events').innerHTML = '';
+            document.getElementById('cultural-events').innerHTML = '';
+
+            if (eventType === 'management') {
+                var managementEvents = [
+                    {
+                        name: 'Fintorum',
+                        venue: 'I_PGDM_B',
+                        date: '2025-02-20',
+                        start_time: '10:30 AM',
+                        floor: 'Ground_floor'
+                    },
+                    {
+                        name: 'IPL Auction',
+                        venue: 'Exam_Hall',
+                        date: '2025-02-20',
+                        start_time: '10:30 AM',
+                        floor: 'First_floor'
+                    },
+                    {
+                        name: 'Quorum Quest',
+                        venue: 'Vaigai',
+                        date: '2025-02-20',
+                        start_time: '10:30 AM',
+                        floor: 'Ground_floor'
+                    },
+                    {
+                        name: 'BizThrive',
+                        venue: 'MDP',
+                        date: '2025-02-20',
+                        start_time: '10:30 AM',
+                        floor: 'Ground_floor'
+                    },
+                    {
+                        name: 'Datavista',
+                        venue: 'Krishna',
+                        date: '2025-02-20',
+                        start_time: '10:30 AM',
+                        floor: 'Ground_floor'
+                    },
+                    {
+                        name: 'The Last Knight',
+                        venue: 'II_MBA_A',
+                        date: '2025-02-20',
+                        start_time: '10:30 AM',
+                        floor: 'First_floor'
+                    },
+                    {
+                        name: 'Optimize',
+                        venue: 'Auditorium',
+                        date: '2025-02-20',
+                        start_time: '10:30 AM',
+                        floor: 'First_floor'
+                    },
+                    {
+                        name: 'Manav Prasth',
+                        venue: 'I_MBA_A',
+                        date: '2025-02-20',
+                        start_time: '10:30 AM',
+                        floor: 'First_floor'
+                    },
+                    {
+                        name: 'Emporia',
+                        venue: 'I_PGDM_A',
+                        date: '2025-02-20',
+                        start_time: '10:30 AM',
+                        floor: 'Ground_floor'
+                    }
+                ];
+
+                var managementEventsTable = document.getElementById('management-events');
+                managementEvents.forEach(function (event) {
+                    var row = managementEventsTable.insertRow();
+                    row.insertCell(0).textContent = event.name;
+                    row.insertCell(1).textContent = event.venue;
+                    row.insertCell(2).textContent = event.start_time;
+                    var venueLink = document.createElement('a');
+                    venueLink.href = '#';
+                    venueLink.textContent = event.floor;
+                    venueLink.style.color = 'white';
+                    venueLink.onclick = function () {
+                        showVenue(event.floor, event.name, event.venue);
+                        return false;
+                    };
+                    var cell = row.insertCell(3);
+                    cell.appendChild(venueLink);
+                });
+
+                managementTable.style.display = 'block';
+                culturalTable.style.display = 'none';
+            } else if (eventType === 'cultural') {
+                var culturalEvents = [
+                    {
+                        name: 'Yukti Inauguration',
+                        venue: 'Main Stage',
+                        date: '2025-02-20',
+                        start_time: '8:55 AM',
+                        floor: 'Stage'
+                    },
+                    {
+                        name: 'Vogue Visions',
+                        venue: 'Main Stage',
+                        date: '2025-02-20',
+                        start_time: '5:30 PM',
+                        floor: 'Stage'
+                    },
+                    {
+                        name: 'Frags & Flags',
+                        venue: 'Seminar Hall 2',
+                        date: '2025-02-21',
+                        start_time: '9:00 AM',
+                        floor: 'Ground_floor'
+                    },
+                    {
+                        name: 'In-house Group Dance',
+                        venue: 'Main Stage',
+                        date: '2025-02-21',
+                        start_time: '9:45 AM',
+                        floor: 'Stage'
+                    },
+                    {
+                        name: 'Euphoria Encore',
+                        venue: 'Main Stage',
+                        date: '2025-02-21',
+                        start_time: '10:00 AM',
+                        floor: 'Stage'
+                    },
+                    {
+                        name: 'Mimora',
+                        venue: 'Main Stage',
+                        date: '2025-02-21',
+                        start_time: '12:45 PM',
+                        floor: 'Stage'
+                    },
+                    {
+                        name: 'Cine Quiz',
+                        venue: 'Exam Hall',
+                        date: '2025-02-21',
+                        start_time: '2:30 PM',
+                        floor: 'First_floor'
+                    },
+                    {
+                        name: 'Management Felicitation',
+                        venue: 'Main Stage',
+                        date: '2025-02-21',
+                        start_time: '3:45 PM',
+                        floor: 'Stage'
+                    },
+                    {
+                        name: 'Fusion Fest',
+                        venue: 'Main Stage',
+                        date: '2025-02-21',
+                        start_time: '5:30 PM',
+                        floor: 'Stage'
+                    },
+                    {
+                        name: 'In-House Band',
+                        venue: 'Main Stage',
+                        date: '2025-02-21',
+                        start_time: '8:30 PM',
+                        floor: 'Stage'
+                    },
+                    {
+                        name: 'Frame By Frame',
+                        venue: 'Exam Hall',
+                        date: '2025-02-22',
+                        start_time: '8:00 AM',
+                        floor: 'First_floor'
+                    },
+                    {
+                        name: 'Rolling Shutters',
+                        venue: 'LAB I',
+                        date: '2025-02-22',
+                        start_time: '9:30 AM',
+                        floor: 'Ground_floor'
+                    },
+                    {
+                        name: 'Reel Rhapsody',
+                        venue: 'MDP Hall',
+                        date: '2025-02-22',
+                        start_time: '9:30 AM',
+                        floor: 'Ground_floor'
+                    },
+                    {
+                        name: 'Noteworthy',
+                        venue: 'Main Stage',
+                        date: '2025-02-22',
+                        start_time: '10:00 AM',
+                        floor: 'Stage'
+                    },
+                    {
+                        name: 'Groove Gala',
+                        venue: 'Main Stage',
+                        date: '2025-02-22',
+                        start_time: '1:00 PM',
+                        floor: 'Stage'
+                    },
+                    {
+                        name: 'Cultural Felicitation',
+                        venue: 'Main Stage',
+                        date: '2025-02-22',
+                        start_time: '4:15 PM',
+                        floor: 'Stage'
+                    }
+                ];
+
+                var culturalEventsTable = document.getElementById('cultural-events');
+                culturalEvents.forEach(function (event) {
+                    var row = culturalEventsTable.insertRow();
+                    row.insertCell(0).textContent = event.name;
+                    row.insertCell(1).textContent = event.venue;
+                    row.insertCell(2).textContent = event.start_time;
+                    var venueLink = document.createElement('a');
+                    venueLink.href = '#';
+                    venueLink.textContent = event.floor;
+                    venueLink.style.color = 'white';
+                    venueLink.onclick = function () {
+                        showVenue(event.floor, event.name, event.venue);
+                        return false;
+                    };
+                    var cell = row.insertCell(3);
+                    cell.appendChild(venueLink);
+                });
+
+                managementTable.style.display = 'none';
+                culturalTable.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+
+</html>
