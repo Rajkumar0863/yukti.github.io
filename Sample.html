@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Building Map with Events</title>
+  <!-- Include Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <!-- Include Leaflet JavaScript -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Set map height -->
+  <style>
+    .map-container {
+      display: flex;
+    }
+    .map {
+      flex: 1;
+      height: 500px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Events list -->
+  <div>
+    <h2>Events</h2>
+    <ul id="events-list"></ul>
+  </div>
+
+  <!-- Maps container -->
+  <div class="map-container">
+    <!-- Ground floor map -->
+    <div id="ground-floor-map" class="map">
+      <h3>Ground Floor Map</h3>
+    </div>
+    <!-- First floor map -->
+    <div id="first-floor-map" class="map">
+      <h3>First Floor Map</h3>
+    </div>
+  </div>
+
+  <script>
+    // Define image overlays with the floor plans
+    var imageUrls = {
+      ground_floor: 'ground_floor.jpg',
+      first_floor: 'first_floor.jpg'
+    };
+
+    var imageBounds = {
+      ground_floor: [[9.877301, 78.083108], [9.877858, 78.083707]],
+      first_floor: [[9.877301, 78.083108], [9.877858, 78.083707]]
+    };
+
+    // Define venue coordinates for both floors
+    var venues = {
+      ground_floor: {
+        Seminar_Hall_2: [9.877644, 78.083413], // Seminar Hall 2 (Narmadha)
+        LAB_I: [9.877739, 78.083592], // LAB I (Krishna)
+        MDP_Hall: [9.877808, 78.083681], // MDP Hall
+        Exam_Hall: [9.877906, 78.083020] // Exam Hall
+      },
+      first_floor: {
+        Main_Stage: [9.877668, 78.083116], // Main Stage
+        Auditorium: [9.877668, 78.083116], // Auditorium
+        Seminar_Hall_1: [9.877644, 78.083413] // Seminar Hall 1
+      }
+    };
+
+    // Define events with their respective venues and floors
+    var events = [
+      { name: 'Yukti Inauguration', venue: 'Main_Stage', floor: 'first_floor', time: '8:55 AM - 10:02 AM' },
+      { name: 'Vogue Visions', venue: 'Main_Stage', floor: 'first_floor', time: '5:30 PM - 9:00 PM' },
+      { name: 'Frags & Flags', venue: 'Seminar_Hall_2', floor: 'ground_floor', time: '9:00 AM - 5:00 PM' },
+      { name: 'In-house Group Dance', venue: 'Main_Stage', floor: 'first_floor', time: '9:45 AM - 10:00 AM' },
+      { name: 'Euphoria Encore', venue: 'Main_Stage', floor: 'first_floor', time: '10:00 AM - 12:30 PM' },
+      { name: 'Mimora', venue: 'Main_Stage', floor: 'first_floor', time: '12:45 PM - 3:15 PM' },
+      { name: 'Cine Quiz', venue: 'Exam_Hall', floor: 'ground_floor', time: '2:30 PM - 5:00 PM' },
+      { name: 'Management Felicitation', venue: 'Main_Stage', floor: 'first_floor', time: '3:45 PM - 5:00 PM' },
+      { name: 'Fusion Fest', venue: 'Main_Stage', floor: 'first_floor', time: '5:30 PM - 8:30 PM' },
+      { name: 'In-House Band', venue: 'Main_Stage', floor: 'first_floor', time: '8:30 PM - 9:00 PM' },
+      { name: 'Frame By Frame', venue: 'Exam_Hall', floor: 'ground_floor', time: '8:00 AM - 4:15 PM' },
+      { name: 'Rolling Shutters', venue: 'LAB_I', floor: 'ground_floor', time: '9:30 AM - 2:00 PM' },
+      { name: 'Reel Rhapsody', venue: 'MDP_Hall', floor: 'ground_floor', time: '9:30 AM - 3:00 PM' },
+      { name: 'Noteworthy', venue: 'Main_Stage', floor: 'first_floor', time: '10:00 AM - 12:30 PM' },
+      { name: 'Groove Gala', venue: 'Main_Stage', floor: 'first_floor', time: '1:00 PM - 3:30 PM' },
+      { name: 'Cultural Felicitation', venue: 'Main_Stage', floor: 'first_floor', time: '4:15 PM - 5:25 PM' }
+    ];
+
+    var activeMarker = null; // Variable to keep track of the active marker
+    var activeEvent = null; // Variable to keep track of the active event
+
+    // Initialize events list
+    var eventsList = document.getElementById('events-list');
+    events.forEach(function(event) {
+      var listItem = document.createElement('li');
+      var link = document.createElement('a');
+      link.href = '#';
+      link.textContent = event.name + ' (' + event.floor.replace('_', ' ') + ') - ' + event.time;
+      link.onclick = function(event) { return function() { showVenue(event.floor, event.venue, event.name); }; }(event);
+      listItem.appendChild(link);
+      eventsList.appendChild(listItem);
+    });
+
+    // Create maps
+    var groundFloorMap = L.map('ground-floor-map').setView([9.877596, 78.083417], 20, { bearing: 90 }); // Set bearing to 90 degrees (West at the top)
+    var firstFloorMap = L.map('first-floor-map').setView([9.877596, 78.083417], 20, { bearing: 90 }); // Set bearing to 90 degrees (West at the top)
+
+    // Add image overlays to maps
+    L.imageOverlay(imageUrls.ground_floor, imageBounds.ground_floor).addTo(groundFloorMap);
+    L.imageOverlay(imageUrls.first_floor, imageBounds.first_floor).addTo(firstFloorMap);
+
+    // Function to show venue on map
+    function showVenue(floor, venue, event) {
+      var venueCoords = venues[floor][venue];
+      if (venueCoords) {
+        var map = floor === 'ground_floor' ? groundFloorMap : firstFloorMap;
+        if (activeEvent === event) {
+          // Toggle marker visibility
+          if (activeMarker) {
+            map.removeLayer(activeMarker);
+            activeMarker = null;
+          } else {
+            activeMarker = L.marker(venueCoords).addTo(map).bindPopup('Event Venue: ' + event + ' (Floor ' + floor.replace('_', ' ') + ')').openPopup(); // Add a marker
+          }
+        } else {
+          // Remove the active marker if exists
+          if (activeMarker) {
+            map.removeLayer(activeMarker);
+            activeMarker = null;
+          }
+          // Add new marker
+          activeMarker = L.marker(venueCoords).addTo(map).bindPopup('Event Venue: ' + event + ' (Floor ' + floor.replace('_', ' ') + ')').openPopup(); // Add a marker
+          activeEvent = event;
+        }
+      } else {
+        alert('Venue not found on the selected floor!');
+      }
+    }
+  </script>
+</body>
+</html>
